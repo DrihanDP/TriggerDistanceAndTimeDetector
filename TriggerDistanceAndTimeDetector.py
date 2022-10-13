@@ -9,7 +9,7 @@ results = tkinter.Text(mainWindow, height=18, width=40, state='normal')
 results.grid(row=1, column=1, sticky='nswe', rowspan=1)
 results.config(border=2, relief='sunken')
 # get file
-input_file = filedialog.askopenfilename(title="Search", filetypes=(("ASC File", "*.asc"), ("all files", "*.*")))
+input_file = filedialog.askopenfilename(title="Search", filetypes=(("all files", "*.*"), ("ASC File", "*.asc"), ("TRC File", "*.trc")))
 # variables
 trigger = False
 last_trig_distance = ""
@@ -26,28 +26,47 @@ time_trigger = False
 with open(input_file) as file:
     line = file.readlines()
 
+if input_file.endswith(".asc"):
+    id_position = 2
+    speed_start_position = 10
+    speed_end_position = 12
+    trigger_position = 13
+    distance_start_position = 6
+    distance_end_position = 10
+elif input_file.endswith(".trc"):
+    id_position = 3
+    speed_start_position = 9
+    speed_end_position = 11
+    trigger_position = 12
+    distance_start_position = 5
+    distance_end_position = 9
+else:
+    print("Not a valid file")
+
 for data in line:
     #split data and remove blank data
     splitLine = [x for x in data.split(" ") if x != ""]
+    if "Rx" not in splitLine:
+        continue
     # check if 'Trigger' has been activated
-    if splitLine[2] == "302":
-        speed_bit = splitLine[10:12]
+    if "302" in splitLine[id_position]:
+        speed_bit = splitLine[speed_start_position:speed_end_position]
         speedJoined = "".join(speed_bit)
         speed = int(speedJoined, 16) * 0.01 * 1.852
         if speed > 100:
             speed100 = True
     # checking ID 303 to see if trigger/event marker has been activated
-    if splitLine[2] == "303":
-        if splitLine[13].strip("\n") != "01" and splitLine[13].strip("\n") != "03" and splitLine[13].strip("\n") != "33" and splitLine[13].strip("\n") != "35":
+    if  "303" in splitLine[id_position]:
+        if splitLine[trigger_position].strip("\n") != "01" and splitLine[trigger_position].strip("\n") != "03" and splitLine[trigger_position].strip("\n") != "33" and splitLine[trigger_position].strip("\n") != "35":
             trigger = True
     if trigger == True and speed100 == True:
-        if splitLine[2] == "304":
+        if "304" in splitLine[id_position]:
             if last_trig_distance == "":
-                last_trig_distance = splitLine[6:10]
+                last_trig_distance = splitLine[distance_start_position:distance_end_position]
             # check if the current distance is equal to the previous distance (indicates trigger stop has finished)
             elif trigger == True and speed < 0.1:
                 # TODO change this to convert straight away and then retrain
-                if splitLine[6:10] == ['00', '00', '00', '00']:
+                if splitLine[distance_start_position:distance_end_position] == ['00', '00', '00', '00']:
                     continue
                 else:
                     # append to list and 'reset' trigger status
@@ -57,13 +76,12 @@ for data in line:
                     speed100 = False
                     time_trigger = True
             else:
-                last_trig_distance = splitLine[6:10]
-    if splitLine[2] == "305":
+                last_trig_distance = splitLine[distance_start_position:distance_end_position]
+    if "305" in splitLine[id_position]:
         if time_trigger == True:
-            trig_time.append(splitLine[10:12])
+            trig_time.append(splitLine[speed_start_position:speed_end_position])
             time_trigger = False
-    else:
-        continue
+
 
 results_list.append("You may need to press off of the window")
 results_list.append("to be able to copy and paste\n")
